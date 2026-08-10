@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}EDA - GlucoBench{% endblock %}
+
+{% block content %}
+
+<div class="container">
+
+    <h1>GlucoBench Exploratory Data Analysis</h1>
+
+    <div class="success">
+        Exploratory Data Analysis completed successfully.
+    </div>
+
+    <div class="section">
+        <h2>1. Dataset Information</h2>
+        <pre class="info-box">{{ info }}</pre>
+    </div>
+
+    <div class="section">
+        <h2>2. Statistical Description</h2>
+        <div class="table-container">
+            {{ description | safe }}
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. Missing Values</h2>
+        <div class="table-container">
+            {{ missing | safe }}
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>4. Duplicate Values</h2>
+
+        <div class="stat-box">
+            <h3>Duplicate Rows</h3>
+            <p>{{ duplicates }}</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>5. Glucose Statistics</h2>
+
+        <div class="stats-grid">
+
+            {% for name, value in glucose_stats.items() %}
+
+            <div class="stat-box">
+                <h3>{{ name }}</h3>
+                <p>{{ value }}</p>
+            </div>
+
+            {% endfor %}
+
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>6. Glucose Visualizations</h2>
+
+        <div class="graph-grid">
+
+            <div class="graph-card">
+
+                <h3>Glucose Distribution</h3>
+
+                <img
+                    src="{{ url_for('static', filename='plots/' + distribution_image) }}"
+                    alt="Glucose Distribution"
+                    class="eda-image"
+                >
+
+            </div>
+
+            <div class="graph-card">
+
+                <h3>Glucose Boxplot</h3>
+
+                <img
+                    src="{{ url_for('static', filename='plots/' + boxplot_image) }}"
+                    alt="Glucose Boxplot"
+                    class="eda-image"
+                >
+
+            </div>
+
+        </div>
+    </div>
+
+    <div class="section">
+
+        <h2>7. Correlation Matrix</h2>
+
+        <div class="table-container">
+            {{ correlation | safe }}
+        </div>
+
+    </div>
+
+    <div class="section">
+
+        <h2>8. Correlation Heatmap</h2>
+
+        <div class="heatmap-container">
+
+            <img
+                src="{{ url_for('static', filename='plots/' + heatmap_image) }}"
+                alt="Correlation Heatmap"
+                class="heatmap-image"
+            >
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

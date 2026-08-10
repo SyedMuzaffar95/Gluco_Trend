@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Load GlucoBench Dataset</title>
+     <link
+        rel="stylesheet"
+        type="text/css"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+<body>
+    <h1>GlucoBench Dataset</h1>
+    <h2>Dataset Loaded Successfully</h2>
+    <p>
+        The GlucoBench glucose dataset has been loaded.
+    </p>
+    <a href="/">Home</a>
+    <hr>
+    <h2>First 5 Rows</h2>
+    {{ data | safe }}
+</body>
+
+</html>
