@@ -1,18 +1,17 @@
-"""Explicit training workflow for the glucose prediction model.
+"""Training workflow for the GlucoTrend glucose prediction model.
 
-Used by:
-  - Docker image build:  RUN python models/train_model.py
-  - Flask /train route:   train_and_save()
-  - Flask /regression and /model-comparison routes: train_all() (cached)
+This module supports the Flask training/prediction routes and can be run as:
+    python -m models.train_model
 
-Importing this module never starts a training job.
+The dataset is discovered from the project's dataset/ directory.
 """
-from models.load import load_dataset
+
 import hashlib
 import os
 import tempfile
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import joblib
 import matplotlib
@@ -22,14 +21,11 @@ import pandas as pd
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 
@@ -39,24 +35,39 @@ from models.preprocessing import prepare_features
 try:
     from xgboost import XGBRegressor
     XGB_AVAILABLE = True
-except ImportError:  # xgboost is optional; the rest still trains
+except ImportError:
     XGB_AVAILABLE = False
 
 
-from pathlib import Path
-import os
-import joblib
-
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+DATA_DIR = BASE_DIR / "dataset"
 MODEL_PATH = BASE_DIR / "models" / "glucose_model.joblib"
 PLOT_DIR = BASE_DIR / "static" / "plots"
 
-# Set this to the actual CSV filename in your dataset folder.
-DATA_PATH = BASE_DIR / "dataset" / "YOUR_DATASET.csv"
+# Use the only CSV in dataset/ when possible. If there are multiple CSV files,
+# prefer the known benchmark filename; otherwise use the first sorted CSV.
+_dataset_files = sorted(DATA_DIR.glob("*.csv")) if DATA_DIR.exists() else []
+_preferred_dataset = DATA_DIR / "GlucoBench_benchmark_dataset.csv"
+if _preferred_dataset.exists():
+    DATA_PATH = _preferred_dataset
+elif len(_dataset_files) == 1:
+    DATA_PATH = _dataset_files[0]
+elif _dataset_files:
+    DATA_PATH = _dataset_files[0]
+else:
+    DATA_PATH = _preferred_dataset
 
 MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
 PLOT_DIR.mkdir(parents=True, exist_ok=True)
+
+TARGET = "glucose"
+TEST_SIZE = 0.20
+RANDOM_STATE = 42
+SVR_MAX_TRAIN_ROWS = 3000
+
+# Module-level cache so page loads do not retrain on every request.
+_CACHE = {"key": None, "result": None}
+
 
 def _dataset_key():
     """Cheap fingerprint of the dataset file for cache invalidation."""
@@ -64,7 +75,7 @@ def _dataset_key():
         stat = os.stat(DATA_PATH)
         raw = "{}:{}:{}".format(DATA_PATH, stat.st_size, int(stat.st_mtime))
     except OSError:
-        raw = DATA_PATH
+        raw = str(DATA_PATH)
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
@@ -85,11 +96,21 @@ def detect_task_type(y):
     raise ValueError("The target must be categorical or numeric.")
 
 
-def chronological_split(X, y, timestamps, test_size=TEST_SIZE):
-    """80/20 time-ordered split so the model never trains on the future."""
-    order = np.argsort(pd.to_datetime(timestamps, dayfirst=True,
-                                      errors="coerce").values)
+def chronological_split(X, y, timestamps=None, test_size=TEST_SIZE):
+    """Split chronologically when timestamps exist; otherwise preserve row order."""
+    if timestamps is not None:
+        parsed = pd.to_datetime(timestamps, dayfirst=True, errors="coerce")
+        if parsed.notna().any():
+            order = np.argsort(parsed.fillna(pd.Timestamp.min).values)
+        else:
+            order = np.arange(len(X))
+    else:
+        order = np.arange(len(X))
+
     cut = int(len(order) * (1 - test_size))
+    if cut <= 0 or cut >= len(order):
+        raise ValueError("Dataset must contain at least two rows for train/test split.")
+
     train_idx, test_idx = order[:cut], order[cut:]
     return (X.iloc[train_idx], X.iloc[test_idx],
             y.iloc[train_idx], y.iloc[test_idx])
@@ -217,7 +238,7 @@ def train_all(use_cache=True):
             ),
         }
 
-    timestamps = df["timestamp"]
+    timestamps = df["timestamp"] if "timestamp" in df.columns else None
     X_train, X_test, y_train, y_test = chronological_split(
         X, y, timestamps, test_size=TEST_SIZE
     )
