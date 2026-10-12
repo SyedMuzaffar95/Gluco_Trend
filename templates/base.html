@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        {% block title %}
+        GlucoTrend — Glucose Analysis
+        {% endblock %}
+    </title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-inner">
+            <a class="logo" href="/">GlucoTrend</a>
+
+            <input
+                type="checkbox"
+                id="nav-toggle"
+                class="nav-toggle-checkbox"
+            >
+            <label for="nav-toggle" class="nav-toggle-label" aria-label="Toggle navigation menu">
+                <span></span>
+            </label>
+
+            <div class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">Dashboard</a>
+                <a href="{{ url_for('load') }}" class="{{ 'active' if request.endpoint == 'load' }}">Load Dataset</a>
+                <a href="{{ url_for('eda') }}" class="{{ 'active' if request.endpoint == 'eda' }}">EDA</a>
+                <a href="{{ url_for('preprocessing') }}" class="{{ 'active' if request.endpoint == 'preprocessing' }}">Preprocessing</a>
+                <a href="{{ url_for('regression_page') }}" class="{{ 'active' if request.endpoint == 'regression_page' }}">Regression</a>
+                <a href="{{ url_for('ensemble') }}" class="{{ 'active' if request.endpoint == 'ensemble' }}">Ensemble Models</a>
+                <a href="{{ url_for('unsupervised') }}" class="{{ 'active' if request.endpoint == 'unsupervised' }}">Unsupervised Learning</a>
+                <a href="{{ url_for('model_comparison_page') }}" class="{{ 'active' if request.endpoint == 'model_comparison_page' }}">Model Comparison</a>
+                <a href="{{ url_for('train_page') }}" class="{{ 'active' if request.endpoint == 'train_page' }}">Train Model</a>
+                <a href="{{ url_for('predict_page') }}" class="{{ 'active' if request.endpoint == 'predict_page' }}">Predict Glucose</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer>
+        <p>
+            GlucoTrend — Glucose Analysis Platform
+        </p>
+    </footer>
+</body>
+
+</html>

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Predict - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Glucose Prediction</h1>
+
+    <div class="success">
+        The form below is generated from the saved model's feature metadata,
+        so the prediction always uses exactly the feature order the model
+        was trained on. Values are prefilled with the training medians /
+        first categories for convenience.
+    </div>
+
+    {% if spec.error %}
+    <div class="empty-state">
+        <p>{{ spec.error }}</p>
+        <a href="/train" class="button">Train a Model</a>
+    </div>
+    {% else %}
+
+    <div class="section">
+        <h2>Model</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Best Model</h3>
+                <p>{{ spec.best_model }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Task Type</h3>
+                <p>{{ spec.status.task_type }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Target</h3>
+                <p>{{ spec.target }} (mg/dL)</p>
+            </div>
+            <div class="stat-box">
+                <h3>Input Features</h3>
+                <p>{{ spec.fields | length }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Enter Feature Values</h2>
+
+        {% if prediction and prediction.validation_errors %}
+        <div class="error-box">
+            <strong>Please fix the following:</strong>
+            <ul>
+                {% for msg in prediction.validation_errors %}
+                <li>{{ msg }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form method="post" action="/predict" class="predict-form">
+            {% for group in spec.groups %}
+            <div class="field-group field-full">
+                <h3>{{ group }}</h3>
+                <div class="predict-form">
+                    {% for field in spec.fields %}
+                    {% if field.group == group %}
+                    <label>
+                        {{ field.label }}
+                        {% if field.type == "select" %}
+                        <select name="{{ field.name }}" required>
+                            {% for choice in field.choices %}
+                            <option
+                                value="{{ choice }}"
+                                {% if field.default is not none and choice == field.default %}selected{% endif %}
+                            >{{ choice }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <input
+                            type="number"
+                            name="{{ field.name }}"
+                            step="any"
+                            {% if field.min is not none %}min="{{ field.min }}"{% endif %}
+                            {% if field.max is not none %}max="{{ field.max }}"{% endif %}
+                            {% if field.default is not none %}value="{{ field.default }}"{% endif %}
+                            required
+                        >
+                        {% endif %}
+                    </label>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="button field-full">
+                Predict Glucose
+            </button>
+        </form>
+    </div>
+
+    {% if prediction %}
+    {% if prediction.error %}
+    <div class="error-box">Error: {{ prediction.error }}</div>
+    {% elif not prediction.validation_errors %}
+    <div class="section">
+        <h2>Prediction Result</h2>
+        <div class="prediction-result">
+            <h3>Predicted Glucose</h3>
+            <div class="value">{{ prediction.prediction }} mg/dL</div>
+            <p>Model: <strong>{{ prediction.model_name }}</strong></p>
+            {% if prediction.zone %}
+            <p>This estimate is {{ prediction.zone }}.</p>
+            {% endif %}
+        </div>
+        {% if prediction.note %}
+        <p class="form-note">{{ prediction.note }}</p>
+        {% endif %}
+        <div class="disclaimer">{{ prediction.disclaimer }}</div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="section">
+        <h2>Notes</h2>
+        <ul>
+            <li>Numeric ranges come from the training data; small out-of-range tolerance is allowed, larger values are rejected.</li>
+            <li>Time-derived features (weekend flag, hour sin/cos) are computed automatically from the hour and day-of-week inputs.</li>
+            <li>Missing categorical values are imputed by the fitted pipeline; unknown categories are handled safely by the one-hot encoder.</li>
+            <li>Results are experimental machine-learning outputs and do not establish a medical diagnosis.</li>
+        </ul>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}

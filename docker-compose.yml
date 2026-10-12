@@ -1,0 +1,7 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001

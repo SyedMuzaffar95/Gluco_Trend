@@ -1,0 +1,780 @@
+{% extends "base.html" %}
+
+{% block title %}Unsupervised Learning - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Unsupervised Learning - Clustering, Projection &amp; Anomaly Detection</h1>
+
+    <div class="success">
+        Dataset &rarr; Algorithm &rarr; Results. Every method below runs
+        automatically with fixed parameters when this page opens - there are
+        no input controls. Features used:
+        {{ features | join(", ") }}.
+    </div>
+
+    <div class="section">
+        <h2>Dataset Info</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Rows Used</h3>
+                <p>{{ n_rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Features</h3>
+                <p>{{ features | length }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>K-Means Clustering</h2>
+        <div class="stats-grid">
+            {% for cluster, count in kmeans_label_counts.items() %}
+            <div class="stat-box">
+                <h3>Cluster {{ cluster }}</h3>
+                <p>{{ count }} samples</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <h3>Cluster Centers</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Cluster</th>
+                    {% for feat in features %}
+                    <th>{{ feat }}</th>
+                    {% endfor %}
+                </tr>
+                {% for center in kmeans_centers %}
+                <tr>
+                    <td>Cluster {{ loop.index0 }}</td>
+                    {% for val in center %}
+                    <td>{{ val }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <h3>K-Means Clustering Plot</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + kmeans_plot) }}"
+            alt="K-Means Clustering"
+            class="plot-image"
+        >
+    </div>
+
+    <div class="section">
+        <h2>Elbow Method (K-Means Inertia)</h2>
+        <p class="form-note">
+            Fixed parameters: k = 1 to {{ elbow_result.max_clusters if elbow_result.error is none else 10 }},
+            random_state=42, n_init=10 on median-filled features.
+            Recommended k is the point with the largest second difference of
+            the inertia (WCSS) curve.
+        </p>
+
+        {% if elbow_result.error %}
+        <div class="error-box">Error: {{ elbow_result.error }}</div>
+        {% else %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Recommended k</h3>
+                <p>{{ elbow_result.recommended_k }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>k Range Tested</h3>
+                <p>1 - {{ elbow_result.max_clusters }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Rows Used</h3>
+                <p>{{ elbow_result.n_used }}</p>
+            </div>
+        </div>
+
+        <h3>Inertia (WCSS) per Cluster Count</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>k</th>
+                    <th>Inertia (WCSS)</th>
+                    <th>Drop from previous k</th>
+                </tr>
+                {% for k in elbow_result.cluster_range %}
+                <tr>
+                    <td>{{ k }}</td>
+                    <td>{{ elbow_result.inertias[loop.index0] }}</td>
+                    <td>{{ elbow_result.inertia_drops[loop.index0 - 1] if loop.index0 > 0 else "-" }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <h3>Elbow Curve</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + elbow_result.plot) }}"
+            alt="Elbow Method"
+            class="plot-image"
+        >
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>K-Means++ Clustering</h2>
+        <p class="form-note">
+            Fixed parameters: n_clusters=3, init="k-means++", random_state=42,
+            n_init=10 on median-filled features.
+        </p>
+
+        {% if kpp_result.error %}
+        <div class="error-box">Error: {{ kpp_result.error }}</div>
+        {% else %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Clusters</h3>
+                <p>{{ kpp_result.n_clusters }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Initialisation</h3>
+                <p>{{ kpp_result.init }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Silhouette</h3>
+                <p>{{ kpp_result.silhouette if kpp_result.silhouette is not none else "N/A" }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Rows Used</h3>
+                <p>{{ kpp_result.n_used }}</p>
+            </div>
+        </div>
+
+        <h3>Cluster Distribution</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Cluster</th>
+                    <th>Samples</th>
+                </tr>
+                {% for cluster, count in kpp_result.label_counts.items() %}
+                <tr>
+                    <td>Cluster {{ cluster }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <h3>Cluster Centers</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Cluster</th>
+                    {% for feat in features %}
+                    <th>{{ feat }}</th>
+                    {% endfor %}
+                </tr>
+                {% for center in kpp_result.centers %}
+                <tr>
+                    <td>Cluster {{ loop.index0 }}</td>
+                    {% for val in center %}
+                    <td>{{ val }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <h3>Sample Cluster Assignments (first 10 rows)</h3>
+        <div class="table-container">{{ kpp_result.sample_html | safe }}</div>
+
+        <h3>K-Means++ Clustering Plot</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + kpp_result.plot) }}"
+            alt="K-Means++ Clustering"
+            class="plot-image"
+        >
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>MiniBatch K-Means Clustering</h2>
+        <p class="form-note">
+            Fixed parameters: n_clusters=3, batch_size=1024, random_state=42,
+            n_init=10 on median-filled features. MiniBatch K-Means is the
+            faster variant for large datasets.
+        </p>
+
+        {% if mbkm_result.error %}
+        <div class="error-box">Error: {{ mbkm_result.error }}</div>
+        {% else %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Clusters</h3>
+                <p>{{ mbkm_result.n_clusters }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Batch Size</h3>
+                <p>{{ mbkm_result.batch_size }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Silhouette</h3>
+                <p>{{ mbkm_result.silhouette if mbkm_result.silhouette is not none else "N/A" }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Rows Used</h3>
+                <p>{{ mbkm_result.n_used }}</p>
+            </div>
+        </div>
+
+        <h3>Cluster Distribution</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Cluster</th>
+                    <th>Samples</th>
+                </tr>
+                {% for cluster, count in mbkm_result.label_counts.items() %}
+                <tr>
+                    <td>Cluster {{ cluster }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <h3>Cluster Centers</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Cluster</th>
+                    {% for feat in features %}
+                    <th>{{ feat }}</th>
+                    {% endfor %}
+                </tr>
+                {% for center in mbkm_result.centers %}
+                <tr>
+                    <td>Cluster {{ loop.index0 }}</td>
+                    {% for val in center %}
+                    <td>{{ val }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <h3>Sample Cluster Assignments (first 10 rows)</h3>
+        <div class="table-container">{{ mbkm_result.sample_html | safe }}</div>
+
+        <h3>MiniBatch K-Means Clustering Plot</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + mbkm_result.plot) }}"
+            alt="MiniBatch K-Means Clustering"
+            class="plot-image"
+        >
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Silhouette Analysis</h2>
+        <p class="form-note">
+            Scores K-Means (k=3), Hierarchical (k=3, linkage="ward") and DBSCAN
+            on StandardScaler features, capped at 5000 sampled rows
+            (random_state=42). DBSCAN noise points (-1) are excluded before
+            scoring.
+        </p>
+
+        {% if sil_result.error %}
+        <div class="error-box">Error: {{ sil_result.error }}</div>
+        {% else %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Algorithm Scored</h3>
+                <p>{{ sil_result.algorithm }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Clusters Found</h3>
+                <p>{{ sil_result.n_clusters }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Silhouette Score</h3>
+                <p>{{ sil_result.silhouette if sil_result.silhouette is not none else "N/A" }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Noise Points</h3>
+                <p>{{ sil_result.n_noise if sil_result.n_noise is not none else "-" }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Rows Used</h3>
+                <p>{{ sil_result.n_used }} of {{ sil_result.n_total }}</p>
+            </div>
+        </div>
+        {% if sil_result.sampled %}
+        <p class="form-note">
+            Sampled {{ sil_result.n_used }} of {{ sil_result.n_total }} rows
+            (random_state=42) because silhouette is O(n&sup2;).
+        </p>
+        {% endif %}
+        {% if sil_result.reason %}
+        <div class="success">{{ sil_result.reason }}</div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Hierarchical Clustering</h2>
+        <p class="form-note">
+            Fixed parameters: n_clusters=3, linkage="ward"
+            (StandardScaler applied, capped at 4000 sampled rows).
+        </p>
+
+        {% if hier_result.error %}
+        <div class="error-box">Error: {{ hier_result.error }}</div>
+        {% else %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Clusters</h3>
+                <p>{{ hier_result.n_clusters }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Linkage</h3>
+                <p>{{ hier_result.linkage }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Silhouette</h3>
+                <p>{{ hier_result.silhouette if hier_result.silhouette is not none else "N/A" }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Rows Used</h3>
+                <p>{{ hier_result.n_used }} of {{ hier_result.n_total }}</p>
+            </div>
+        </div>
+        {% if hier_result.sampled %}
+        <p class="form-note">
+            Sampled {{ hier_result.n_used }} of {{ hier_result.n_total }} rows
+            (random_state=42) so the request stays fast.
+        </p>
+        {% endif %}
+
+        <h3>Cluster Distribution</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Cluster</th>
+                    <th>Samples</th>
+                </tr>
+                {% for cluster, count in hier_result.label_counts.items() %}
+                <tr>
+                    <td>Cluster {{ cluster }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <h3>Sample Cluster Assignments (first 10 rows)</h3>
+        <div class="table-container">{{ hier_result.sample_html | safe }}</div>
+
+        <h3>Hierarchical Clustering Plot</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + hier_result.plot) }}"
+            alt="Hierarchical Clustering"
+            class="plot-image"
+        >
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>DBSCAN Clustering</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Clusters Found</h3>
+                <p>{{ dbscan_n_clusters }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Noise Points</h3>
+                <p>{{ dbscan_n_noise }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Silhouette Score</h3>
+                <p>{{ dbscan_silhouette if dbscan_silhouette is not none else "N/A" }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Parameters</h3>
+                <p>eps={{ dbscan_eps }}, min_samples={{ dbscan_min_samples }}</p>
+            </div>
+        </div>
+
+        <h3>DBSCAN Clustering Plot</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + dbscan_plot) }}"
+            alt="DBSCAN Clustering"
+            class="plot-image"
+        >
+    </div>
+
+    <div class="section">
+        <h2>PCA - Explained Variance</h2>
+        <p class="form-note">
+            Fixed parameters: StandardScaler applied first, then PCA with
+            n_components={{ pca_n_components }}.
+        </p>
+
+        <div class="stats-grid">
+            {% for var in pca_explained %}
+            <div class="stat-box">
+                <h3>PC{{ loop.index }}</h3>
+                <p>{{ var }}</p>
+            </div>
+            {% endfor %}
+            <div class="stat-box">
+                <h3>Reduced Dims</h3>
+                <p>{{ n_rows }} &times; {{ pca_n_components }}</p>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            {% for var in pca_cumulative %}
+            <div class="stat-box">
+                <h3>Cumulative PC{{ loop.index }}</h3>
+                <p>{{ var }}</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <h3>Explained Variance Plot</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + pca_plot) }}"
+            alt="PCA Explained Variance"
+            class="plot-image"
+        >
+
+        <h3>Component Loadings</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Feature</th>
+                    {% for i in range(pca_explained | length) %}
+                    <th>PC{{ loop.index }}</th>
+                    {% endfor %}
+                </tr>
+                {% for item in pca_components %}
+                <tr>
+                    <td>{{ item.feature }}</td>
+                    {% for val in item["values"] %}
+                    <td>{{ val }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>t-SNE Projection</h2>
+        <p class="form-note">
+            Fixed parameters: n_components=2, perplexity=30, random_state=42,
+            init="pca".
+        </p>
+
+        {% if tsne_result.error %}
+        <div class="error-box">Error: {{ tsne_result.error }}</div>
+        {% else %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Algorithm</h3>
+                <p>t-SNE</p>
+            </div>
+            <div class="stat-box">
+                <h3>Original Dimensions</h3>
+                <p>{{ tsne_result.original_dims[0] }} &times; {{ tsne_result.original_dims[1] }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Reduced Dimensions</h3>
+                <p>{{ tsne_result.n_used }} &times; {{ tsne_result.n_components }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Perplexity Used</h3>
+                <p>{{ tsne_result.perplexity }}</p>
+            </div>
+        </div>
+        {% if tsne_result.sampled %}
+        <p class="form-note">
+            t-SNE ran on {{ tsne_result.n_used }} of {{ tsne_result.n_total }}
+            rows (random_state=42) to keep the request fast.
+        </p>
+        {% endif %}
+
+        <h3>Sample Coordinates (first 10 rows)</h3>
+        <div class="table-container">{{ tsne_result.sample_html | safe }}</div>
+
+        <h3>t-SNE Projection Plot</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + tsne_result.plot) }}"
+            alt="t-SNE Projection"
+            class="plot-image"
+        >
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>UMAP Projection</h2>
+        <p class="form-note">
+            Fixed parameters: n_components=2, n_neighbors=15, min_dist=0.1,
+            random_state=42.
+        </p>
+
+        {% if umap_result.error %}
+        <div class="error-box">Error: {{ umap_result.error }}</div>
+        {% else %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Algorithm</h3>
+                <p>UMAP</p>
+            </div>
+            <div class="stat-box">
+                <h3>Original Dimensions</h3>
+                <p>{{ umap_result.n_total }} &times; {{ features | length }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Reduced Dimensions</h3>
+                <p>{{ umap_result.n_used }} &times; {{ umap_result.n_components }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Neighbors / Min Dist</h3>
+                <p>{{ umap_result.n_neighbors }} / {{ umap_result.min_dist }}</p>
+            </div>
+        </div>
+        {% if umap_result.sampled %}
+        <p class="form-note">
+            UMAP ran on {{ umap_result.n_used }} of {{ umap_result.n_total }}
+            rows (random_state=42) to keep the request fast.
+        </p>
+        {% endif %}
+
+        <h3>Sample Coordinates (first 10 rows)</h3>
+        <div class="table-container">{{ umap_result.sample_html | safe }}</div>
+
+        <h3>UMAP Projection Plot</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + umap_result.plot) }}"
+            alt="UMAP Projection"
+            class="plot-image"
+        >
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Isolation Forest - Anomaly Detection</h2>
+
+        {% if if_result.error %}
+        <div class="error-box">Error: {{ if_result.error }}</div>
+        {% else %}
+        <p class="form-note">
+            Runs automatically on the full dataset. Fixed parameters:
+            {{ if_result.params }}. Labels: 1 &rarr; Normal, -1 &rarr; Anomaly.
+        </p>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Total Samples</h3>
+                <p>{{ if_result.total }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Normal Samples</h3>
+                <p>{{ if_result.n_normal }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Anomalies</h3>
+                <p>{{ if_result.n_anomaly }}</p>
+            </div>
+        </div>
+
+        <h3>Anomaly Detection Results</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Status</th>
+                    <th>Samples</th>
+                </tr>
+                {% for status, count in if_result.status_counts %}
+                <tr>
+                    <td>{{ status }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="success">Anomaly Percentage: {{ if_result.anomaly_pct }}%</div>
+
+        <h3>Detected Anomaly Records (first {{ if_result.records_shown }} of {{ if_result.n_anomaly }})</h3>
+        <div class="table-container">{{ if_result.records_html | safe }}</div>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>One-Class SVM - Anomaly Detection</h2>
+
+        {% if ocsvm_result.error %}
+        <div class="error-box">Error: {{ ocsvm_result.error }}</div>
+        {% else %}
+        <p class="form-note">
+            Runs automatically on the full dataset. Fixed parameters:
+            {{ ocsvm_result.params }}. Labels: 1 &rarr; Normal, -1 &rarr; Anomaly.
+        </p>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Total Samples</h3>
+                <p>{{ ocsvm_result.total }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Normal Samples</h3>
+                <p>{{ ocsvm_result.n_normal }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Anomalies</h3>
+                <p>{{ ocsvm_result.n_anomaly }}</p>
+            </div>
+        </div>
+
+        <h3>Anomaly Detection Results</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Status</th>
+                    <th>Samples</th>
+                </tr>
+                {% for status, count in ocsvm_result.status_counts %}
+                <tr>
+                    <td>{{ status }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="success">Anomaly Percentage: {{ ocsvm_result.anomaly_pct }}%</div>
+
+        <h3>Detected Anomaly Records (first {{ ocsvm_result.records_shown }} of {{ ocsvm_result.n_anomaly }})</h3>
+        <div class="table-container">{{ ocsvm_result.records_html | safe }}</div>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Autoencoder - Reconstruction Anomaly Detection</h2>
+        <p class="form-note">
+            Fixed parameters: MLPRegressor network 8 - 2 - 8, max_iter=400,
+            random_state=42, trained X &rarr; X; anomalies are samples above
+            the 95th percentile of reconstruction error. sklearn-only neural
+            autoencoder - no TensorFlow, Keras or PyTorch in this project.
+        </p>
+
+        {% if ae_result.error %}
+        <div class="error-box">Error: {{ ae_result.error }}</div>
+        {% else %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Encoding Dims</h3>
+                <p>{{ ae_result.encoding_dim }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Network</h3>
+                <p>{{ ae_result.hidden_layers }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Mean Error</h3>
+                <p>{{ ae_result.mean_error }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Median Error</h3>
+                <p>{{ ae_result.median_error }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Error Threshold (95%)</h3>
+                <p>{{ ae_result.threshold }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Anomalies</h3>
+                <p>{{ ae_result.n_anomaly }} ({{ ae_result.anomaly_pct }}%)</p>
+            </div>
+        </div>
+
+        <h3>Sample Encodings &amp; Errors (first 10 rows)</h3>
+        <div class="table-container">{{ ae_result.sample_html | safe }}</div>
+
+        <h3>Reconstruction Error Distribution</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + ae_result.plot) }}"
+            alt="Autoencoder Reconstruction Error"
+            class="plot-image"
+        >
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Data Augmentation</h2>
+        <p class="form-note">
+            Fixed parameters: 500 synthetic samples, random_state=42, Gaussian
+            noise (5% of column std) clipped to original ranges.
+        </p>
+
+        {% if aug_result.error %}
+        <div class="error-box">Error: {{ aug_result.error }}</div>
+        {% else %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Original Samples</h3>
+                <p>{{ aug_result.original_size }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Generated Samples</h3>
+                <p>{{ aug_result.generated }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Final Samples</h3>
+                <p>{{ aug_result.final_size }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Random State</h3>
+                <p>{{ aug_result.random_state }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Columns Noised</h3>
+                <p>{{ aug_result.noised_columns }} numeric (identifiers excluded)</p>
+            </div>
+        </div>
+
+        <div class="success">{{ aug_result.note }}</div>
+
+        <h3>Sample Synthetic Rows (first 10)</h3>
+        <div class="table-container">{{ aug_result.sample_html | safe }}</div>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Model Pipeline</h2>
+        <ul>
+            <li>Every method runs automatically with fixed parameters when the page opens; there are no parameter inputs.</li>
+            <li>Features: {{ features | join(", ") }}.</li>
+            <li>Missing values: filled with median of each column (K-Means, DBSCAN, projections); rows with missing values dropped where PCA is fitted.</li>
+            <li>K-Means: n_clusters=2, random_state=42, n_init=10.</li>
+            <li>Elbow Method: K-Means inertia for k = 1 to {{ elbow_result.max_clusters if elbow_result.error is none else 10 }}; recommended k via the largest second difference of the inertia curve; elbow_curve.png plotted.</li>
+            <li>K-Means++: n_clusters=3 with init="k-means++", random_state=42, n_init=10; PCA scatter coloured by cluster.</li>
+            <li>MiniBatch K-Means: n_clusters=3, batch_size=1024, random_state=42, n_init=10 for faster clustering on large datasets.</li>
+            <li>Silhouette Analysis: scores K-Means (k=3), Hierarchical (k=3, ward) and DBSCAN (noise points excluded) on StandardScaler features sampled to at most 5000 rows.</li>
+            <li>Hierarchical: sklearn AgglomerativeClustering, n_clusters=3, linkage="ward", StandardScaler applied first, capped at 4000 sampled rows.</li>
+            <li>DBSCAN: eps={{ dbscan_eps }}, min_samples={{ dbscan_min_samples }}. Silhouette score computed only when n_clusters &ge; 2 and non-noise points &gt; n_clusters.</li>
+            <li>PCA: StandardScaler applied first, then PCA with n_components={{ pca_n_components }}; explained and cumulative variance displayed.</li>
+            <li>t-SNE: n_components=2, perplexity=30, random_state=42, run on up to 2000 sampled rows; scatter coloured by K-Means cluster.</li>
+            <li>UMAP: umap-learn, n_components=2, n_neighbors=15, min_dist=0.1, random_state=42, StandardScaler applied first, up to 5000 sampled rows.</li>
+            <li>Isolation Forest: n_estimators=100, contamination=0.05, random_state=42 on the full dataset; 1 &rarr; Normal, -1 &rarr; Anomaly stored as IsolationForest_Status.</li>
+            <li>One-Class SVM: kernel='rbf', nu=0.05, gamma='scale' with StandardScaler on the full dataset; 1 &rarr; Normal, -1 &rarr; Anomaly stored as OneClassSVM_Status.</li>
+            <li>Autoencoder: sklearn MLPRegressor (8 - 2 - 8) trained X &rarr; X; anomalies are samples above the 95th percentile of reconstruction error.</li>
+            <li>Data Augmentation: rows sampled with replacement, Gaussian noise (5% of column std) on numeric columns clipped to original ranges, random_state=42; original dataset unchanged and nothing written to disk.</li>
+            <li>Plots: K-Means, Hierarchical, DBSCAN, PCA, t-SNE, UMAP scatters and the autoencoder error distribution in static/plots.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

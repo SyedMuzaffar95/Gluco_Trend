@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Data Cleaning &amp; Preprocessing - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Data Cleaning &amp; Preprocessing</h1>
+
+    <div class="success">
+        The regression pipeline uses leakage-safe preprocessing with KNN imputation.
+    </div>
+
+    <div class="section">
+        <h2>Cleaning Summary</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Rows</h3>
+                <p>{{ rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Columns</h3>
+                <p>{{ columns }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Missing Cells</h3>
+                <p>{{ before_missing }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Numeric Features</h3>
+                <p>{{ numeric_count }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Categorical Features</h3>
+                <p>{{ categorical_count }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Model Input Features</h3>
+                <p>{{ model_features }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Missing Values Before Imputation</h2>
+        <div class="table-container">{{ report | safe }}</div>
+    </div>
+
+    <div class="section">
+        <h2>Preprocessing Steps</h2>
+        <ul>
+            <li>Convert timestamp into useful time features.</li>
+            <li>Remove identifiers and the empty notes column.</li>
+            <li>Remove glucose_roll_mean_1h because it contains the current target and causes data leakage.</li>
+            <li>Standardize numeric variables before KNN distance calculation.</li>
+            <li>Apply KNNImputer with 5 nearest neighbors to numeric missing values.</li>
+            <li>Impute categorical values with the most frequent category.</li>
+            <li>One-hot encode categorical variables.</li>
+            <li>Fit preprocessing only on the training data inside the ML pipeline.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

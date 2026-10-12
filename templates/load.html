@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Load Dataset - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>GlucoTrend Dataset</h1>
+
+    <div class="success">
+        The GlucoTrend glucose dataset has been loaded successfully.
+    </div>
+
+    <div class="section">
+        <h2>Dataset Facts</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Rows</h3>
+                <p>{{ rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Columns</h3>
+                <p>{{ columns }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>First 5 Rows</h2>
+        <div class="table-container">{{ data | safe }}</div>
+    </div>
+</div>
+{% endblock %}

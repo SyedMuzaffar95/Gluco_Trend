@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}One-Class SVM - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>One-Class SVM - Anomaly Detection</h1>
+
+    {% if error %}
+    <div class="error-box">Error: {{ error }}</div>
+    {% else %}
+    <div class="success">
+        Runs automatically on the full GlucoTrend dataset when this page is
+        opened - dataset &rarr; algorithm &rarr; results, no inputs.
+        Fixed parameters: {{ params }}. Labels: 1 &rarr; Normal, -1 &rarr; Anomaly.
+        Result stored as the <strong>OneClassSVM_Status</strong> column.
+    </div>
+
+    <div class="section">
+        <h2>One-Class SVM - Anomaly Detection</h2>
+
+        <div class="stats-grid">
+            <div class="stat-box"><h3>Total Samples</h3><p>{{ total }}</p></div>
+            <div class="stat-box"><h3>Normal Samples</h3><p>{{ n_normal }}</p></div>
+            <div class="stat-box"><h3>Anomalies</h3><p>{{ n_anomaly }}</p></div>
+        </div>
+
+        <h3>Anomaly Detection Results</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr><th>Status</th><th>Samples</th></tr>
+                {% for status, count in status_counts %}
+                <tr><td>{{ status }}</td><td>{{ count }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="success">Anomaly Percentage: {{ anomaly_pct }}%</div>
+
+        <h3>Detected Anomaly Records (first {{ records_shown }} of {{ n_anomaly }})</h3>
+        <div class="table-container">{{ records_html | safe }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Simple &amp; Logistic Regression - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Simple Linear &amp; Logistic Regression</h1>
+
+    <div class="success">
+        Simple Linear Regression predicts glucose from one feature (glucose_lag_1).
+        Logistic Regression classifies glucose as High (&ge; 140 mg/dL) or Normal.
+        Both use the same chronological 80/20 split as the main regression pipeline.
+    </div>
+
+    <div class="section">
+        <h2>Simple Linear Regression Performance</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>MAE</h3>
+                <p>{{ slr_metrics.MAE }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>MSE</h3>
+                <p>{{ slr_metrics.MSE }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>RMSE</h3>
+                <p>{{ slr_metrics.RMSE }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>R&sup2; Score</h3>
+                <p>{{ slr_metrics.R2 }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Regression Equation</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Slope (b&#8321;)</h3>
+                <p>{{ slope }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Intercept (b&#8320;)</h3>
+                <p>{{ intercept }}</p>
+            </div>
+        </div>
+        <ul>
+            <li>Predicted Glucose = {{ intercept }} + ({{ slope }} &times; glucose_lag_1)</li>
+            <li>A one-unit increase in the previous glucose reading changes the current prediction by {{ slope }} mg/dL.</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Simple Linear Regression - Best Fit Line</h2>
+        <img
+            src="{{ url_for('static', filename='plots/' + slr_plot_image) }}"
+            alt="Simple Linear Regression Best Fit Line"
+            class="plot-image"
+        >
+    </div>
+
+    <div class="section">
+        <h2>Simple Linear Regression Predictions</h2>
+        <div class="table-container">{{ slr_results | safe }}</div>
+    </div>
+
+    <div class="section">
+        <h2>Logistic Regression Performance</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Accuracy</h3>
+                <p>{{ log_metrics.Accuracy }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Precision</h3>
+                <p>{{ log_metrics.Precision }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Recall</h3>
+                <p>{{ log_metrics.Recall }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>F1 Score</h3>
+                <p>{{ log_metrics.F1 }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Classification Dataset Info</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>High Cases (&ge;140)</h3>
+                <p>{{ log_metrics.high_cases }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Normal Cases</h3>
+                <p>{{ log_metrics.normal_cases }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Training Rows</h3>
+                <p>{{ log_metrics.train_rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Testing Rows</h3>
+                <p>{{ log_metrics.test_rows }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Confusion Matrix &amp; Predicted Probabilities</h2>
+        <img
+            src="{{ url_for('static', filename='plots/' + log_plot_image) }}"
+            alt="Logistic Regression Confusion Matrix and Probabilities"
+            class="plot-image"
+        >
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th></th>
+                    <th>Predicted Normal</th>
+                    <th>Predicted High</th>
+                </tr>
+                <tr>
+                    <td><strong>Actual Normal</strong></td>
+                    <td>{{ confusion[0][0] }}</td>
+                    <td>{{ confusion[0][1] }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Actual High</strong></td>
+                    <td>{{ confusion[1][0] }}</td>
+                    <td>{{ confusion[1][1] }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Logistic Regression Predictions</h2>
+        <div class="table-container">{{ log_results | safe }}</div>
+    </div>
+
+    <div class="section">
+        <h2>Model Pipeline</h2>
+        <ul>
+            <li>Single feature: glucose_lag_1 (glucose reading from 15 minutes earlier)</li>
+            <li>Target regression: glucose | Target classification: High if glucose &ge; 140 mg/dL, else Normal</li>
+            <li>Train/test split: chronological 80/20 split</li>
+            <li>Simple Linear Regression: scikit-learn LinearRegression on one feature</li>
+            <li>Logistic Regression: StandardScaler + LogisticRegression pipeline</li>
+            <li>Metrics regression: MAE, MSE, RMSE, R&sup2; | Metrics classification: Accuracy, Precision, Recall, F1, Confusion Matrix</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

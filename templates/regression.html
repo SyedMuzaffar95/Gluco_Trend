@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Regression - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Glucose Regression Models</h1>
+
+    <div class="success">
+        The target <strong>{{ target if target is not none else "glucose" }}</strong>
+        is a continuous concentration, so every model below is a regressor.
+        A chronological 80/20 split is used, the preprocessor is fitted only
+        on training data, and the best model is selected by test R&sup2; -
+        never by training performance.
+    </div>
+
+    {% if error %}
+    <div class="error-box">Error: {{ error }}</div>
+    {% else %}
+
+    <div class="section">
+        <h2>Run Information</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Task Type</h3>
+                <p>{{ task_type }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Target</h3>
+                <p>{{ target }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Features</h3>
+                <p>{{ feature_count }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Training Rows</h3>
+                <p>{{ train_rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Testing Rows</h3>
+                <p>{{ test_rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Trained At</h3>
+                <p>{{ trained_at }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="best-banner">
+        Best model by test R&sup2;:
+        <strong>{{ best_model }}</strong>
+        &mdash; MAE {{ best_metrics.MAE }}, RMSE {{ best_metrics.RMSE }},
+        R&sup2; {{ best_metrics.R2 }}
+    </div>
+
+    <div class="section">
+        <h2>Model Comparison (Test Set)</h2>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Model</th>
+                    <th>MAE</th>
+                    <th>MSE</th>
+                    <th>RMSE</th>
+                    <th>R&sup2;</th>
+                    <th>Fit Time (s)</th>
+                    <th>Note</th>
+                </tr>
+                {% for row in comparison %}
+                <tr>
+                    <td>{{ row.model }}</td>
+                    <td>{{ row.MAE if row.MAE is not none else "-" }}</td>
+                    <td>{{ row.MSE if row.MSE is not none else "-" }}</td>
+                    <td>{{ row.RMSE if row.RMSE is not none else "-" }}</td>
+                    <td>{{ row.R2 if row.R2 is not none else "-" }}</td>
+                    <td>{{ row.fit_seconds }}</td>
+                    <td>{{ row.note if row.note else "-" }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Test R&sup2; Comparison</h2>
+        <img
+            src="{{ url_for('static', filename='plots/' + plots.comparison) }}"
+            alt="Regression Model Comparison"
+            class="plot-image"
+        >
+    </div>
+
+    <div class="section">
+        <h2>Actual vs Predicted &mdash; {{ best_model }}</h2>
+        <img
+            src="{{ url_for('static', filename='plots/' + plots.scatter) }}"
+            alt="Actual vs Predicted"
+            class="plot-image"
+        >
+    </div>
+
+    <div class="section">
+        <h2>Residual Distribution &mdash; {{ best_model }}</h2>
+        <img
+            src="{{ url_for('static', filename='plots/' + plots.residuals) }}"
+            alt="Residual Distribution"
+            class="plot-image"
+        >
+    </div>
+
+    <div class="section">
+        <h2>Pipeline Notes</h2>
+        <ul>
+            <li>Target: continuous <strong>{{ target }}</strong> (mg/dL) &mdash; regression only, never binned into classes.</li>
+            <li>Split: chronological 80/20 so the model never trains on future readings.</li>
+            <li>Preprocessing: leakage-safe ColumnTransformer (StandardScaler + KNN imputer for numeric, most-frequent impute + one-hot for categorical) fitted on train data only.</li>
+            <li>Support Vector Regressor trains on a 3000-row subsample for speed (noted in the comparison table).</li>
+            <li>Best model selection: highest test R&sup2; across all successfully trained candidates.</li>
+            <li>These are experimental model outputs, not medical advice.</li>
+        </ul>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Train Model - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Model Training</h1>
+
+    <div class="success">
+        Training runs only when you press the button below (or when
+        <code>python models/train_model.py</code> is executed, which is how the
+        Docker image bakes the model in at build time). The dataset and target
+        are centralised in <code>models/train_model.py</code>
+        (target: <strong>glucose</strong>, regression).
+    </div>
+
+    <div class="section">
+        <h2>Saved Model Status</h2>
+        {% if status.exists %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Best Model</h3>
+                <p>{{ status.best_model }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Task Type</h3>
+                <p>{{ status.task_type }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Trained At</h3>
+                <p>{{ status.trained_at }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Artifact Size</h3>
+                <p>{{ status.model_size_kb }} KB</p>
+            </div>
+            <div class="stat-box">
+                <h3>Features</h3>
+                <p>{{ status.feature_count }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Location</h3>
+                <p>models/glucose_model.joblib</p>
+            </div>
+        </div>
+        {% if status.metrics %}
+        <h3>Saved Model Test Metrics</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>MAE</th>
+                    <th>MSE</th>
+                    <th>RMSE</th>
+                    <th>R&sup2;</th>
+                </tr>
+                <tr>
+                    <td>{{ status.metrics.MAE }}</td>
+                    <td>{{ status.metrics.MSE }}</td>
+                    <td>{{ status.metrics.RMSE }}</td>
+                    <td>{{ status.metrics.R2 }}</td>
+                </tr>
+            </table>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <p>{{ status.message }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Start Training</h2>
+        <p class="form-note">
+            Trains all candidate regressors, compares them on the chronological
+            test split, then saves the best pipeline (preprocessor + estimator)
+            with full metadata. A failed run never overwrites a valid existing
+            model.
+        </p>
+        <form method="post" action="/train" class="mt-sm">
+            <button type="submit" class="button">Train Models Now</button>
+        </form>
+    </div>
+
+    {% if result %}
+    {% if result.error %}
+    <div class="error-box">Error: {{ result.error }}</div>
+    {% else %}
+    <div class="section">
+        <h2>Training Result</h2>
+        <div class="best-banner">
+            Best model: <strong>{{ result.best_model }}</strong>
+            &mdash; MAE {{ result.metrics.MAE }}, RMSE {{ result.metrics.RMSE }},
+            R&sup2; {{ result.metrics.R2 }}
+        </div>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Training Rows</h3>
+                <p>{{ result.train_rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Testing Rows</h3>
+                <p>{{ result.test_rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Artifact Size</h3>
+                <p>{{ result.model_size_kb }} KB</p>
+            </div>
+            <div class="stat-box">
+                <h3>Trained At</h3>
+                <p>{{ result.trained_at }}</p>
+            </div>
+        </div>
+
+        <h3>Comparison Table</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>Model</th>
+                    <th>MAE</th>
+                    <th>MSE</th>
+                    <th>RMSE</th>
+                    <th>R&sup2;</th>
+                    <th>Fit Time (s)</th>
+                </tr>
+                {% for row in result.comparison %}
+                <tr>
+                    <td>{{ row.model }}</td>
+                    <td>{{ row.MAE if row.MAE is not none else "-" }}</td>
+                    <td>{{ row.MSE if row.MSE is not none else "-" }}</td>
+                    <td>{{ row.RMSE if row.RMSE is not none else "-" }}</td>
+                    <td>{{ row.R2 if row.R2 is not none else "-" }}</td>
+                    <td>{{ row.fit_seconds }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="success">
+            Model saved at <code>{{ result.model_path }}</code>.
+            The <a href="/predict">Predict</a> page now uses this artifact.
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <div class="section">
+        <h2>What Training Does</h2>
+        <ul>
+            <li>Loads <code>dataset/GlucoTrend_benchmark_dataset.csv</code> with target <code>glucose</code>.</li>
+            <li>Builds leakage-safe features (identifiers, notes and the leaky rolling mean are removed; timestamps become time features).</li>
+            <li>Uses a chronological 80/20 train-test split.</li>
+            <li>Fits the preprocessing pipeline on training data only.</li>
+            <li>Trains Linear, Ridge, Decision Tree, Random Forest, KNN, SVR, Gradient Boosting and (when installed) XGBoost regressors.</li>
+            <li>Selects the best model by test R&sup2; and saves pipeline + metadata with joblib (atomic write).</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

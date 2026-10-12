@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Project Dashboard</h1>
+
+    <div class="success">
+        Overview of the GlucoTrend glucose dataset, the configured prediction
+        target and the current model-training status.
+    </div>
+
+    <div class="section">
+        <h2>Dataset Overview</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Records</h3>
+                <p>{{ rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Columns</h3>
+                <p>{{ columns }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Numeric Columns</h3>
+                <p>{{ numeric_count }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Categorical Columns</h3>
+                <p>{{ categorical_count }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Missing Cells</h3>
+                <p>{{ missing_total }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Duplicate Rows</h3>
+                <p>{{ duplicates }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Prediction Target</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Target Column</h3>
+                <p>{{ target }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Task Type</h3>
+                <p>{{ task_type }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Model Input Features</h3>
+                <p>{{ artifact.feature_count if artifact.exists else "Train to see" }}</p>
+            </div>
+        </div>
+        <p class="form-note">
+            Glucose concentration is a continuous value, so the supervised
+            pipeline treats it as a regression problem. The target is never
+            arbitrarily converted into classes.
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>Model Status</h2>
+        {% if artifact.exists %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Best Model</h3>
+                <p>{{ artifact.best_model }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Trained At</h3>
+                <p>{{ artifact.trained_at }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Artifact Size</h3>
+                <p>{{ artifact.model_size_kb }} KB</p>
+            </div>
+        </div>
+        {% if artifact.metrics %}
+        <h3>Test Metrics</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th>MAE</th>
+                    <th>MSE</th>
+                    <th>RMSE</th>
+                    <th>R&sup2;</th>
+                </tr>
+                <tr>
+                    <td>{{ artifact.metrics.MAE }}</td>
+                    <td>{{ artifact.metrics.MSE }}</td>
+                    <td>{{ artifact.metrics.RMSE }}</td>
+                    <td>{{ artifact.metrics.R2 }}</td>
+                </tr>
+            </table>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <p>{{ artifact.message }}</p>
+            <a href="/train" class="button">Train Model</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Dataset Columns</h2>
+        <div class="table-container">
+            <table class="data-table">
+                <tr><th>#</th><th>Column</th></tr>
+                {% for name in column_names %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ name }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Explore Sections</h2>
+        <div class="nav-cards">
+            <a class="nav-card" href="/load">
+                <h3>Data Loading</h3>
+                <p>Dataset preview and schema.</p>
+            </a>
+            <a class="nav-card" href="/eda">
+                <h3>EDA</h3>
+                <p>Distributions, correlations and plots.</p>
+            </a>
+            <a class="nav-card" href="/preprocessing">
+                <h3>Preprocessing</h3>
+                <p>Imputation, scaling and encoding.</p>
+            </a>
+            <a class="nav-card" href="/regression">
+                <h3>Regression</h3>
+                <p>Regressor comparison on glucose.</p>
+            </a>
+            <a class="nav-card" href="/ensemble">
+                <h3>Classification</h3>
+                <p>High vs Normal glucose classifiers.</p>
+            </a>
+            <a class="nav-card" href="/unsupervised">
+                <h3>Unsupervised</h3>
+                <p>Clustering, projections and anomalies.</p>
+            </a>
+            <a class="nav-card" href="/model-comparison">
+                <h3>Model Comparison</h3>
+                <p>Saved-model comparison table.</p>
+            </a>
+            <a class="nav-card" href="/train">
+                <h3>Train Model</h3>
+                <p>Explicit training and persistence.</p>
+            </a>
+            <a class="nav-card" href="/predict">
+                <h3>Predict</h3>
+                <p>Interactive glucose prediction form.</p>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Tree &amp; Ensemble Models - GlucoTrend{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Decision Tree, Random Forest, AdaBoost &amp; XGBoost</h1>
+
+    <div class="success">
+        Six classifiers predict whether glucose is High (&ge; {{ threshold }} mg/dL, coded 1)
+        or Normal (0). Each model trains with {{ feature_names|length }} features
+        (glucose_lag_1, insulin_basal, carbs), a single stratified 80/20 train-test split
+        with random_state=42, and reports accuracy plus precision/recall/F1 and confusion matrix.
+    </div>
+
+    <div class="section">
+        <h2>Classification Dataset Info</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>High Cases (&ge;{{ threshold }})</h3>
+                <p>{{ high_cases }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Normal Cases</h3>
+                <p>{{ normal_cases }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Modelled Rows</h3>
+                <p>{{ train_rows }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Features</h3>
+                <p>{{ feature_names|length }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Model Comparison</h2>
+        <h3>Test Accuracy</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + accuracy_plot) }}"
+            alt="Accuracy Comparison"
+            class="plot-image"
+        >
+        <h3>Confusion Matrices</h3>
+        <img
+            src="{{ url_for('static', filename='plots/' + cm_plot) }}"
+            alt="Confusion Matrices"
+            class="plot-image plot-image-wide"
+        >
+    </div>
+
+    {% for i in range(names|length) %}
+    <div class="section">
+        <h2>{{ names[i] }}</h2>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <h3>Accuracy</h3>
+                <p>{{ metrics[i].Accuracy }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Precision</h3>
+                <p>{{ metrics[i].Precision }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>Recall</h3>
+                <p>{{ metrics[i].Recall }}</p>
+            </div>
+            <div class="stat-box">
+                <h3>F1 Score</h3>
+                <p>{{ metrics[i].F1 }}</p>
+            </div>
+        </div>
+
+        <h3>Confusion Matrix</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <tr>
+                    <th></th>
+                    <th>Predicted Normal</th>
+                    <th>Predicted High</th>
+                </tr>
+                <tr>
+                    <td><strong>Actual Normal</strong></td>
+                    <td>{{ confusions[i][0][0] }}</td>
+                    <td>{{ confusions[i][0][1] }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Actual High</strong></td>
+                    <td>{{ confusions[i][1][0] }}</td>
+                    <td>{{ confusions[i][1][1] }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="section">
+        <h2>Sample Row Predictions (10 Rows)</h2>
+        <div class="table-container">{{ comparison | safe }}</div>
+    </div>
+
+    <div class="section">
+        <h2>Features Used</h2>
+        <ul>
+            {% for name in feature_names %}
+            <li>{{ name }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Model Pipeline</h2>
+        <ul>
+            <li>Features: {{ feature_names | join(", ") }}.</li>
+            <li>Target: HighGlucose = 1 if glucose &ge; {{ threshold }} mg/dL, else 0.</li>
+            <li>Train/test split: 80/20 with stratify, random_state=42.</li>
+            <li>Decision Tree: criterion="gini", max_depth=None.</li>
+            <li>Pruned Decision Tree: max_depth=4, min_samples_split=10, min_samples_leaf=5.</li>
+            <li>Random Forest: 100 trees, criterion="gini", max_depth=5.</li>
+            <li>AdaBoost: DecisionTree(max_depth=1) base, 50 estimators, learning_rate=1.0.</li>
+            <li>Gradient Boosting: 100 estimators, learning_rate=0.1, max_depth=3, subsample=0.8.</li>
+            <li>XGBoost: 100 trees, learning_rate=0.1, max_depth=3, subsample=0.8, colsample_bytree=0.8.</li>
+            <li>Metrics: Accuracy, Precision, Recall, F1, Confusion Matrix + Classification Report (printed to console).</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>Significance of These Models</h2>
+        <ul>
+            <li><strong>Decision Tree</strong> &mdash; simple rule-based classifier. It splits the data using the most informative of the three features (glucose_lag_1, insulin_basal, carbs) and is highly interpretable. It is the building block on which all other models here are based.</li>
+            <li><strong>Pruned Decision Tree</strong> &mdash; the unpruned tree grows until every leaf is pure and memorises noise (overfitting). Limiting depth to 4 and requiring min 10 samples per split / 5 per leaf keeps the tree simpler and more general on unseen glucose readings.</li>
+            <li><strong>Random Forest</strong> &mdash; trains many decision trees on random data subsets and averages their votes (bagging). Averaging reduces variance and overfitting, which is why it usually performs better and more stably than a single tree on noisy physiological data.</li>
+            <li><strong>AdaBoost</strong> &mdash; instead of voting, it trains trees sequentially, each one concentrating on the records the previous trees misclassified, giving more weight to hard cases (e.g. borderline readings around 140 mg/dL).</li>
+            <li><strong>Gradient Boosting</strong> &mdash; builds trees sequentially where each new tree predicts the residual (error) of the current ensemble. Small depth-3 trees plus a low learning rate produce a strong, smooth decision boundary.</li>
+            <li><strong>XGBoost</strong> &mdash; a highly optimised, regularised gradient boosting implementation. Its built-in L1/L2 regularisation, column sub-sampling and smart handling make it fast and robust, typically the strongest and most accurate model in this comparison.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
