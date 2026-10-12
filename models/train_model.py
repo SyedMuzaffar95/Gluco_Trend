@@ -44,26 +44,19 @@ except ImportError:  # xgboost is optional; the rest still trains
 
 
 from pathlib import Path
+import os
 import joblib
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 MODEL_PATH = BASE_DIR / "models" / "glucose_model.joblib"
+PLOT_DIR = BASE_DIR / "static" / "plots"
+
+# Set this to the actual CSV filename in your dataset folder.
+DATA_PATH = BASE_DIR / "dataset" / "YOUR_DATASET.csv"
 
 MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-# After training your existing model:
-# joblib.dump(model, MODEL_PATH)
-
-TARGET = "glucose"
-TEST_SIZE = 0.20
-RANDOM_STATE = 42
-SVR_MAX_TRAIN_ROWS = 3000
-
-os.makedirs(PLOT_DIR, exist_ok=True)
-
-# Module-level cache so page loads do not retrain on every request.
-_CACHE = {"key": None, "result": None}
-
+PLOT_DIR.mkdir(parents=True, exist_ok=True)
 
 def _dataset_key():
     """Cheap fingerprint of the dataset file for cache invalidation."""
